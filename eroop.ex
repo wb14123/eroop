@@ -2,19 +2,42 @@
 defmodule Eroop do
 
   defmacro __using__(_opts) do
-    quote do: import Eroop
+    quote do
+      import Kernel, except: [@: 1]
+      import Eroop
+    end
   end
 
-  defmacro init(do: block), do: :ok
+  defmacro init(do: block) do
+    quote do
+      defp __init do
+        state = %{}
+        unquote transform block
+        state
+      end
+    end
+  end
+
   defmacro sync(header, do: block), do: def_method(header, block, :call)
   defmacro async(header, do: block), do: def_method(header, block, :cast)
   defmacro terminate(do: block), do: :ok
+
+  defmacro @({attr, _, _}) do
+    quote do
+      var!(state)[unquote(attr)]
+    end
+  end
 
   defmacro actor(name, do: block) do
     quote do
 
       defmodule unquote(name) do
         use GenServer.Behaviour
+
+        # instance APIs
+        unquote block
+
+        def get_state(timeout, {__MODULE__, pid}), do: :sys.get_status(pid, timeout)
 
         # class APIs
         def new() do
@@ -25,21 +48,21 @@ defmodule Eroop do
         def start_link() do
         end
 
-        # instance APIs
-        unquote block
-
         # callbacks of gen_server
-        def init(state) do
+        def init(_) do
+          state = __init
           {:ok, state}
         end
 
         def handle_call({fun, args}, _from, state) do
-          {:reply, :erlang.apply(__MODULE__, fun, args), state}
+          new_state = :erlang.apply(__MODULE__, fun, [state | args])
+          :io.format("~p~n", [new_state])
+          {:reply, :reply, state}
         end
 
         def handle_cast({fun, args}, state) do
-          :erlang.apply(__MODULE__, fun, args)
-          {:noreply, state}
+          new_state = :erlang.apply(__MODULE__, fun, [state | args])
+          {:noreply, new_state}
         end
 
       end
@@ -55,9 +78,15 @@ defmodule Eroop do
       ]}
   end
 
-  defp def_priv_method(header, block) do
+  defp priv_name(name), do: list_to_atom('__' ++ atom_to_list(name))
+
+  defp def_priv_method({name, line, nil}, block), do: def_priv_method({name, line, []}, block)
+  defp def_priv_method({name, _, params}, block) do
     quote do
-      def unquote(header), do: unquote block
+      def unquote(priv_name name)(var!(state), unquote_splicing(params)) do
+        unquote transform block
+        var!(state)
+      end
     end
   end
 
@@ -65,7 +94,7 @@ defmodule Eroop do
     quote do
       def unquote(name)(unquote_splicing(params), {_, pid})
         when unquote_splicing(guards) do
-          :erlang.apply(:gen_server, unquote(type), [pid, {unquote(name), unquote(params)}])
+          :erlang.apply(:gen_server, unquote(type), [pid, {unquote(priv_name name), unquote(params)}])
         end
     end
   end
@@ -74,9 +103,18 @@ defmodule Eroop do
   defp def_pub_method({name, _, params}, type) do
     quote do
       def unquote(name)(unquote_splicing(params), {_, pid}) do
-        :erlang.apply(:gen_server, unquote(type), [pid, {unquote(name), unquote(params)}])
+        :erlang.apply(:gen_server, unquote(type), [pid, {unquote(priv_name name), unquote(params)}])
       end
     end
   end
+
+  defp transform({:=, _, [{:@, _, [{v1, _, _}]}, v2]}) do
+    #TODO: bug here because v1 is not in the key set of state
+    quote do: state = %{var!(state) | unquote(v1) => unquote(transform v2)}
+  end
+  defp transform({sym, line, r = [_|_]}) do
+    {sym, line, Enum.map(r, fn x -> transform x end)}
+  end
+  defp transform(x), do: x
 
 end
