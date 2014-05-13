@@ -5,20 +5,12 @@ defmodule Eroop do
     quote do: import Eroop
   end
 
-  defmacro actor(name, do: block) do
-    def_supervisor name
-    def_module name, block
-  end
-
   defmacro init(do: block), do: :ok
   defmacro sync(header, do: block), do: def_method(header, block, :call)
   defmacro async(header, do: block), do: def_method(header, block, :cast)
   defmacro terminate(do: block), do: :ok
 
-  defp def_supervisor(name) do
-  end
-
-  defp def_module(name, block) do
+  defmacro actor(name, do: block) do
     quote do
 
       defmodule unquote(name) do
