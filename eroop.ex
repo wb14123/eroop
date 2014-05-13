@@ -18,10 +18,8 @@ defmodule Eroop do
 
         # class APIs
         def new() do
-          IO.puts "new"
           {:ok, pid} = :gen_server.start_link(__MODULE__, [], [])
-          self = {__MODULE__, pid}
-          self
+          {__MODULE__, pid}
         end
 
         def start_link() do
