@@ -4,6 +4,7 @@ use Eroop
 actor Test do
 
   sync hello(msg, type) do
+    :timer.sleep(1000)
     :io.format("hello, msg: ~p, type: ~p~n", [msg, type])
   end
 
@@ -16,6 +17,6 @@ end
 
 t = Test.new
 t.hi
-IO.puts "I just say hi"
+IO.puts "I just said hi"
 t.hello(1, :info)
-IO.puts "I just say hello"
+IO.puts "I just said hello"
