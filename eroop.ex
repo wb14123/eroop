@@ -75,7 +75,7 @@ defmodule Eroop do
     quote do
       def unquote(name)(unquote_splicing(params), {_, pid})
         when unquote_splicing(guards) do
-          :erlang.apply(:gen_server, unqoute(type), [pid, {unquote(name), unquote(params)}])
+          :erlang.apply(:gen_server, unquote(type), [pid, {unquote(name), unquote(params)}])
         end
     end
   end
