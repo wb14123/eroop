@@ -2,33 +2,21 @@
 defmodule Eroop do
 
   defmacro __using__(_opts) do
-    quote do
-      import Eroop
-    end
+    quote do: import Eroop
   end
 
   defmacro actor(name, do: block) do
     def_supervisor name
     def_module name, block
-
   end
 
-  defmacro init(block) do
-  end
-
-  defmacro sync(header, do: block) do
-    def_method(header, block)
-  end
-
-  defmacro async(name, do: block) do
-  end
-
-  defmacro terminate(name, do: block) do
-  end
+  defmacro init(do: block), do: :ok
+  defmacro sync(header, do: block), do: def_method(header, block, :call)
+  defmacro async(header, do: block), do: def_method(header, block, :cast)
+  defmacro terminate(do: block), do: :ok
 
   defp def_supervisor(name) do
   end
-
 
   defp def_module(name, block) do
     quote do
@@ -40,7 +28,8 @@ defmodule Eroop do
         def new() do
           IO.puts "new"
           {:ok, pid} = :gen_server.start_link(__MODULE__, [], [])
-          {__MODULE__, pid}
+          self = {__MODULE__, pid}
+          self
         end
 
         def start_link() do
@@ -55,10 +44,11 @@ defmodule Eroop do
         end
 
         def handle_call({fun, args}, _from, state) do
-          {:reply, :apply, state}
+          {:reply, :erlang.apply(__MODULE__, fun, args), state}
         end
 
         def handle_cast({fun, args}, state) do
+          :erlang.apply(__MODULE__, fun, args)
           {:noreply, state}
         end
 
@@ -67,9 +57,12 @@ defmodule Eroop do
     end
   end
 
-  defp def_method(header, block) do
-    def_priv_method(header, block)
-    def_pub_method(header, block)
+  defp def_method(header, block, type) do
+    {:__block__, [],
+      [
+        def_priv_method(header, block),
+        def_pub_method(header, type)
+      ]}
   end
 
   defp def_priv_method(header, block) do
@@ -78,33 +71,22 @@ defmodule Eroop do
     end
   end
 
-  defp def_pub_method(header, block) do
-    {name, line, args1} = header
-    args2 = case args1 do
-      nil -> []
-      _ -> args1
-    end
-    args3 = args2 ++ [{:inner_pid, [], nil}]
-    header1 = {name, line, args3}
-
+  defp def_pub_method({:when, _, [{name, _, params} | guards]}, type) do
     quote do
-      def unquote(header1) do
-        {_module, pid} = inner_pid
-        send_msg({name, args1}, pid, :sync)
+      def unquote(name)(unquote_splicing(params), {_, pid})
+        when unquote_splicing(guards) do
+          :erlang.apply(:gen_server, unqoute(type), [pid, {unquote(name), unquote(params)}])
+        end
+    end
+  end
+
+  defp def_pub_method({name, line, nil}, type), do: def_pub_method({name, line, []}, type)
+  defp def_pub_method({name, _, params}, type) do
+    quote do
+      def unquote(name)(unquote_splicing(params), {_, pid}) do
+        :erlang.apply(:gen_server, unquote(type), [pid, {unquote(name), unquote(params)}])
       end
     end
-  end
-
-  defp send_msg(msg, pid, :sync) do
-    :gen_server.call(pid, msg)
-  end
-
-  defp send_msg(msg, pid, :async) do
-    :gen_server.cast(pid, msg)
-  end
-
-  # transform the block in function
-  defp transform_block(block) do
   end
 
 end
