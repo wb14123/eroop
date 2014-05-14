@@ -105,6 +105,7 @@ defmodule Eroop do
     end
   end
 
+  #TODO: should we just allow define new key in init function?
   defp transform({:=, _, [{:@, _, [{v1, _, _}]}, v2]}) do
     quote do: var!(state) = Dict.put(var!(state), unquote(v1), unquote(transform v2))
   end
