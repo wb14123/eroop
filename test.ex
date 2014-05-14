@@ -4,34 +4,22 @@ use Eroop
 actor Test do
 
   init do
+    @counter = 1
   end
 
-  sync add(num) do
-    @counter = num
+  async add(num) do
+    :timer.sleep(1000)
+    IO.puts "I will really add now"
+    @counter = @counter + num
   end
 
   sync get() do
-    IO.puts @couter
-  end
-
-  sync hello(msg, type) do
-    @a = 1
-    :timer.sleep(1000)
-    :io.format("hello, msg: ~p, type: ~p~n", [msg, type])
-  end
-
-  sync hi do
-    :timer.sleep(1000)
-    :io.format("hi~n")
+    @counter
   end
 
 end
 
 t = Test.new
-# t.hi
-IO.puts "I just said hi"
-t.hello(1, :info)
-IO.puts "I just said hello"
-
 t.add(5)
-t.get
+IO.puts "I just add 5"
+IO.puts t.get

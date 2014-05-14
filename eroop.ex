@@ -11,9 +11,9 @@ defmodule Eroop do
   defmacro init(do: block) do
     quote do
       defp __init do
-        state = %{}
+        var!(state) = %{}
         unquote transform block
-        state
+        var!(state)
       end
     end
   end
@@ -23,9 +23,7 @@ defmodule Eroop do
   defmacro terminate(do: block), do: :ok
 
   defmacro @({attr, _, _}) do
-    quote do
-      var!(state)[unquote(attr)]
-    end
+    quote do: var!(state)[unquote(attr)]
   end
 
   defmacro actor(name, do: block) do
@@ -55,13 +53,12 @@ defmodule Eroop do
         end
 
         def handle_call({fun, args}, _from, state) do
-          new_state = :erlang.apply(__MODULE__, fun, [state | args])
-          :io.format("~p~n", [new_state])
-          {:reply, :reply, state}
+          {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
+          {:reply, reply, new_state}
         end
 
         def handle_cast({fun, args}, state) do
-          new_state = :erlang.apply(__MODULE__, fun, [state | args])
+          {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
           {:noreply, new_state}
         end
 
@@ -84,8 +81,8 @@ defmodule Eroop do
   defp def_priv_method({name, _, params}, block) do
     quote do
       def unquote(priv_name name)(var!(state), unquote_splicing(params)) do
-        unquote transform block
-        var!(state)
+        reply = (unquote transform block)
+        {var!(state), reply}
       end
     end
   end
@@ -109,8 +106,7 @@ defmodule Eroop do
   end
 
   defp transform({:=, _, [{:@, _, [{v1, _, _}]}, v2]}) do
-    #TODO: bug here because v1 is not in the key set of state
-    quote do: state = %{var!(state) | unquote(v1) => unquote(transform v2)}
+    quote do: var!(state) = Dict.put(var!(state), unquote(v1), unquote(transform v2))
   end
   defp transform({sym, line, r = [_|_]}) do
     {sym, line, Enum.map(r, fn x -> transform x end)}
