@@ -34,4 +34,20 @@ defmodule EroopTest do
     assert count == 7
   end
 
+  test "crash test" do
+    defmodule Crash do
+      use Eroop
+
+      init _(init_count), do: @counter = init_count
+      async crash, do: 0/0
+      sync get, do: @counter
+    end
+
+    Crash.start_sup
+    c = Crash.new 1
+    c.crash
+    count = c.get
+    assert count == 1
+  end
+
 end
