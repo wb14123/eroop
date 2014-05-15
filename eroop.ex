@@ -24,6 +24,7 @@ defmodule Eroop do
     end
   end
 
+  #TODO: init without params will not work
   defmacro init({_name, _line, params}, do: block) do
     quote do
       def new(unquote_splicing(params)) do
