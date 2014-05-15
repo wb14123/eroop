@@ -65,7 +65,7 @@ defmodule Eroop do
         end
       end
 
-      def start_sup(args) do
+      def start_sup do
         :supervisor.start_link({:local, __MODULE__.Sup}, __MODULE__.Sup, [__MODULE__])
       end
     end
