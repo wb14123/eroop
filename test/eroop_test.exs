@@ -21,6 +21,8 @@ defmodule EroopTest do
       end
     end
 
+    Basic.start_sup []
+
     time_wait = 100
     c = Basic.new 2, time_wait
     {s1, s2, s3} = :erlang.now

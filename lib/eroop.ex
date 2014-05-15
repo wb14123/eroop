@@ -8,6 +8,8 @@ defmodule Eroop do
 
       use GenServer.Behaviour
 
+      unquote def_supervisor
+
       # define a gen_server and its callbacks
       def get_state(timeout, {__MODULE__, pid}), do: :sys.get_status(pid, timeout)
 
@@ -28,8 +30,12 @@ defmodule Eroop do
   defmacro init({_name, _line, params}, do: block) do
     quote do
       def new(unquote_splicing(params)) do
-        {:ok, pid} = :gen_server.start_link(__MODULE__, unquote(params), [])
+        {:ok, pid} = :supervisor.start_child(__MODULE__.Sup, unquote(params))
         {__MODULE__, pid}
+      end
+
+      def start_link(unquote_splicing(params)) do
+        :gen_server.start_link(__MODULE__, unquote(params), [])
       end
 
       def init([unquote_splicing(params)]) do
@@ -46,6 +52,23 @@ defmodule Eroop do
 
   defmacro @({attr, _, _}) do
     quote do: var!(state)[unquote(attr)]
+  end
+
+  defp def_supervisor do
+    quote do
+      defmodule Sup do
+        use Supervisor.Behaviour
+
+        def init([name]) do
+          children = [worker(name, [])]
+          supervise children, strategy: :simple_one_for_one
+        end
+      end
+
+      def start_sup(args) do
+        :supervisor.start_link({:local, __MODULE__.Sup}, __MODULE__.Sup, [__MODULE__])
+      end
+    end
   end
 
   defp def_method(header, block, type) do
