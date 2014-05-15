@@ -5,10 +5,26 @@ defmodule Eroop do
     quote do
       import Kernel, except: [@: 1]
       import Eroop
+
+      use GenServer.Behaviour
+
+      # define a gen_server and its callbacks
+      def get_state(timeout, {__MODULE__, pid}), do: :sys.get_status(pid, timeout)
+
+      def handle_call({fun, args}, _from, state) do
+        {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
+        {:reply, reply, new_state}
+      end
+
+      def handle_cast({fun, args}, state) do
+        {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
+        {:noreply, new_state}
+      end
+
     end
   end
 
-  defmacro init({name, _, params}, do: block) do
+  defmacro init({_name, _line, params}, do: block) do
     quote do
       def new(unquote_splicing(params)) do
         {:ok, pid} = :gen_server.start_link(__MODULE__, unquote(params), [])
@@ -29,32 +45,6 @@ defmodule Eroop do
 
   defmacro @({attr, _, _}) do
     quote do: var!(state)[unquote(attr)]
-  end
-
-  defmacro actor(name, do: block) do
-    quote do
-
-      defmodule unquote(name) do
-        use GenServer.Behaviour
-
-        # instance APIs
-        unquote block
-
-        def get_state(timeout, {__MODULE__, pid}), do: :sys.get_status(pid, timeout)
-
-        def handle_call({fun, args}, _from, state) do
-          {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
-          {:reply, reply, new_state}
-        end
-
-        def handle_cast({fun, args}, state) do
-          {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
-          {:noreply, new_state}
-        end
-
-      end
-
-    end
   end
 
   defp def_method(header, block, type) do

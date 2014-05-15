@@ -1,5 +1,5 @@
 #! /bin/sh
 
-rm Elixir.Eroop.beam
+rm *.beam
 elixirc eroop.ex
 elixir test.ex

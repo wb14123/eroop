@@ -1,7 +1,6 @@
 
-use Eroop
-
-actor Test do
+defmodule Test do
+  use Eroop
 
   init _(init_count, _whatever) do
     @counter = init_count
