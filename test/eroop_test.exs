@@ -16,7 +16,7 @@ defmodule EroopTest do
         @counter = @counter + num
       end
 
-      sync get() do
+      sync get do
         @counter
       end
     end
