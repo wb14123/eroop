@@ -3,8 +3,8 @@ use Eroop
 
 actor Test do
 
-  init do
-    @counter = 1
+  init _(init_count, _whatever) do
+    @counter = init_count
   end
 
   async add(num) do
@@ -19,7 +19,7 @@ actor Test do
 
 end
 
-t = Test.new
+t = Test.new 2, 3
 t.add(5)
 IO.puts "I just add 5"
 IO.puts t.get

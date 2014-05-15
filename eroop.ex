@@ -8,12 +8,17 @@ defmodule Eroop do
     end
   end
 
-  defmacro init(do: block) do
+  defmacro init({name, _, params}, do: block) do
     quote do
-      defp __init do
+      def new(unquote_splicing(params)) do
+        {:ok, pid} = :gen_server.start_link(__MODULE__, unquote(params), [])
+        {__MODULE__, pid}
+      end
+
+      def init([unquote_splicing(params)]) do
         var!(state) = %{}
         unquote transform block
-        var!(state)
+        {:ok, var!(state)}
       end
     end
   end
@@ -36,21 +41,6 @@ defmodule Eroop do
         unquote block
 
         def get_state(timeout, {__MODULE__, pid}), do: :sys.get_status(pid, timeout)
-
-        # class APIs
-        def new() do
-          {:ok, pid} = :gen_server.start_link(__MODULE__, [], [])
-          {__MODULE__, pid}
-        end
-
-        def start_link() do
-        end
-
-        # callbacks of gen_server
-        def init(_) do
-          state = __init
-          {:ok, state}
-        end
 
         def handle_call({fun, args}, _from, state) do
           {new_state, reply} = :erlang.apply(__MODULE__, fun, [state | args])
